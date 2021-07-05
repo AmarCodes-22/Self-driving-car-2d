@@ -21,11 +21,11 @@ paths = {
 needle_arrays, needle_names = get_needles(paths)
 
 #* defining haystacks
-haystack1_arr = cv.imread(os.path.join(IMAGES_PATH, 'haystacks', '15.jpg'))
+haystack1_arr = cv.imread(os.path.join(IMAGES_PATH, 'haystacks', '7.jpg'))
 
 #* get bounding boxes
 bounding_boxes = get_bounding_boxes(haystack1_arr, needle_arrays, needle_names)
-pprint.pprint(bounding_boxes)
+# pprint.pprint(bounding_boxes)
 
 #* show bounding boxes
-show_bounding_boxes(haystack1_arr, bounding_boxes)
+show_bounding_boxes(haystack1_arr, bounding_boxes,needle_arrays, needle_names)
