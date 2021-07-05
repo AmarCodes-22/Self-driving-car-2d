@@ -24,24 +24,16 @@ def get_bounding_boxes(haystack: np.ndarray, needles: list, object_names: list):
     len_needles = len(needles)
     threshold = 0.8
     for i in range(len_needles):
+        all = []
         result = cv.matchTemplate(haystack, needles[i], cv.TM_CCOEFF_NORMED)
         (y_cords, x_cords) = np.where(result >= threshold)
-        final = []
-        for j in range(1, len(y_cords)):
-            if (abs(y_cords[j] - y_cords[j-1]) < 10) & (abs(x_cords[j] - x_cords[j-1]) < 10):
-                continue
-            else:
-                print('inside else')
-                top_left = (x_cords[j], y_cords[j])
-                print(f'shape used for bottom left is from {object_names[i]}')
-                bottom_right = (x_cords[j]+needles[i].shape[1], y_cords[j]+needles[i].shape[0])
-                final.append(top_left, bottom_right)
+        
+        if len(y_cords) > 0:
+            for j in range(len(y_cords)):
+                confidence = result[y_cords[j], x_cords[j]]
+                all.append(((x_cords[j], y_cords[j]), confidence))
 
-        if len(y_cords) >= 1:
-            final.append((x_cords[0], y_cords[0]))
-            final.append((x_cords[0]+needles[i].shape[1], y_cords[0]+needles[i].shape[0]))
-
-        bounding_boxes[object_names[i]] = final
+        bounding_boxes[object_names[i]] = all
 
     return bounding_boxes
 
