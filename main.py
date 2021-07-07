@@ -1,7 +1,10 @@
 import os
 import cv2 as cv
-import pprint
+import numpy as np
+import pyautogui
+from time import time
 from object_detection import get_needles, get_bounding_boxes, show_bounding_boxes
+from window_capture import get_window_dimensions
 
 
 IMAGES_PATH = os.path.join(os.getcwd(), 'data')
@@ -17,15 +20,19 @@ paths = {
     'yellow_truck1_needle': os.path.join(IMAGES_PATH, 'needles', 'yellow-truck1.jpg')
 }
 
-#* defining needles
+#* Defining needles
 needle_arrays, needle_names = get_needles(paths)
 
-#* defining haystacks
-haystack1_arr = cv.imread(os.path.join(IMAGES_PATH, 'haystacks', '7.jpg'))
-
-#* get bounding boxes
-bounding_boxes = get_bounding_boxes(haystack1_arr, needle_arrays, needle_names)
-# pprint.pprint(bounding_boxes)
-
-#* show bounding boxes
-show_bounding_boxes(haystack1_arr, bounding_boxes,needle_arrays, needle_names)
+#* Grabbing the screen dimensions
+screen_location = get_window_dimensions()
+loop_time = time()
+while True:
+    img = pyautogui.screenshot(region=screen_location)
+    haystack_arr = cv.cvtColor(np.array(img), cv.COLOR_RGB2BGR)
+    bounding_boxes = get_bounding_boxes(haystack_arr, needle_arrays, needle_names)
+    detections = show_bounding_boxes(haystack_arr, bounding_boxes, needle_arrays, needle_names)
+    cv.imshow('Detections', detections)
+    print('FPS', 1/(time() - loop_time))
+    loop_time = time()
+    if cv.waitKey(1) == ord('q'):
+        break

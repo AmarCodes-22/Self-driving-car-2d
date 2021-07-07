@@ -6,8 +6,8 @@ def get_needles(paths:dict):
     '''
     Converts image(s) from local storage to a np array.
     '''
-    needle_arrs = []
-    needle_names = []
+    needle_arrs = [] # A list of all needle numpy arrays.
+    needle_names = [] # A list of the names inferred from the filenames from the needles folder.
     for i, key in enumerate(paths):
         arr = cv.imread(paths[key])
         needle_arrs.append(arr)
@@ -20,10 +20,12 @@ def get_bounding_boxes(haystack: np.ndarray, needles: list, object_names: list):
     Returns multiple bounding boxes for all object(s). 
     For eg when yellow-car1 exists in multiple positions on screen.
     '''
-    bounding_boxes = {}
+    bounding_boxes = {} # A dict of the object names and their bounding boxes.
     len_needles = len(needles)
-    threshold = 0.75
+    threshold = 0.7
     for i in range(len_needles):
+        if 'truck' in object_names[i]:
+            threshold = 0.8
         all = []
         result = cv.matchTemplate(haystack, needles[i], cv.TM_CCOEFF_NORMED)
         (y_cords, x_cords) = np.where(result >= threshold)
@@ -48,10 +50,9 @@ def non_max_supression(name:str, boxes:list):
     final.append(boxes[0])
     for i in range(len(boxes)):
         box_cord, box_conf = boxes[i][0], boxes[i][1]
-        # print('final', final)
-        if abs(box_cord[0] - final[-1][0][0]) > 10:
+        if abs(box_cord[0] - final[-1][0][0]) > 10: # if the objects are not similar add them to the list.
             final.append((box_cord, box_conf))
-        else:
+        else: # if they are similar use confidence to decide whether to add or not.
             if box_conf > final[-1][1]:
                 final.pop()
                 final.append((box_cord, box_conf))
@@ -73,11 +74,14 @@ def show_bounding_boxes(haystack:np.ndarray, bounding_boxes:dict, needles:list, 
                 needle_h = needles[pos].shape[0]
                 needle_w = needles[pos].shape[1]
                 bottom_right = (box_cord[0]+needle_w, box_cord[1]+needle_h)
-                print(object_names[pos], box_cord, bottom_right)
+                # print(object_names[pos], box_cord, bottom_right)
 
                 cv.rectangle(haystack, box_cord, bottom_right, color=(0,255,0), thickness=1, lineType=cv.LINE_4)
                 
-    cv.imshow('Result', haystack)
-    cv.waitKey(0)
+    return haystack
+    # cv.imshow('Result', haystack)
+    # cv.waitKey(1)
                 
-# In 30.jpg it is still considering a red truck as a yellow truck.
+# Can't distinguish between color of the trucks and non max supression doesn't work
+# because it only works on boxes for a single object at a time.
+# Add more images for yellow car 1 or crop it to remove the effect of the white lines.
