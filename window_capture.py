@@ -1,5 +1,18 @@
 import os
 import re
+# from gi.repository import Gtk
+# from Xlib import display, X
+# from PIL import Image
+
+# W,H = 200,200
+# dsp = display.Display()
+# try:
+#     root = dsp.screen().root
+#     raw = root.get_image(0, 0, W,H, X.ZPixmap, 0xffffffff)
+#     image = Image.frombytes("RGB", (W, H), raw.data, "raw", "BGRX")
+#     image.show()
+# finally:
+#     dsp.close()
 
 def get_window_dimensions():
     #* Using xwininfo to find the location of the pocof1 screen and get the id using wmctrl -l
@@ -27,5 +40,9 @@ def get_window_dimensions():
                 last_digits = re.match('.*?([0-9]+)$', i).group(1)
 
             win_dim.append(last_digits)
+    
+    win_dim = map(int, win_dim)
+
 
     return tuple(win_dim)
+
