@@ -16,35 +16,28 @@ def get_needles(paths:dict):
     return needle_arrs, needle_names
 
 
-#* Refactored get bounding boxes
+#* Refactored get_bounding_boxes
 def get_bounding_boxes(haystack:np.ndarray, needles:list, object_names:list):
     '''
-    Returns the bounding boxes for the objects in (top_left_x, top_left_y, needle_w, needle_h, confidence) format
-    for all objects whether the object is present or not. If the obejct is not present, the bbox is an empty list.
+    Returns the bounding boxes for the objects in 
+    (top_left_x, top_left_y, bottom_right_x, bottom_right_y, confidence) format
+    for all objects whether the object is present or not.
+    If the obejct is not present, the bbox is an empty list.
     '''
-    # bounding_boxes = {}
     all_rectangles = []
-    threshold = 0.75
+    threshold = 0.7
     for i in range(len(needles)):
-        # bbox_needle = []
-        # locations = []
         result = cv.matchTemplate(haystack, needles[i], cv.TM_CCOEFF_NORMED)
         top_lefts = np.where(result >= threshold)
         top_lefts = list(zip(*top_lefts[::-1]))
         if len(top_lefts) > 0:
-            needle_h, needle_w = needles[i].shape[0], needles[i].shape[1]
+            h, w = needles[i].shape[0], needles[i].shape[1]
             for top_left in top_lefts:
-                # bottom_right = (top_left[0]+needle_w, top_left[1]+needle_h, result[top_left[1], top_left[0]])
-                # locations.append(top_left + bottom_right)
-                all_rectangles.append([top_left[0], top_left[1], top_left[0]+needle_w, top_left[1]+needle_h])
-
-    # rectangles, weights = cv.groupRectangles(all_rectangles, 1, 0.5)
-
-        # bounding_boxes[object_names[i]] = locations
+                all_rectangles.append([top_left[0], top_left[1], w, h, result[top_left[1], top_left[0]]])
 
     return all_rectangles
 
-#* Refactoring non_max_supression
+#* Refactored non_max_supression
 def non_max_supression(rectangles:list):
     final = []
     if len(rectangles):
@@ -52,10 +45,28 @@ def non_max_supression(rectangles:list):
         for i in range(len(rectangles) - 1):
             if abs(rectangles[i][0] - rectangles[i+1][0]) > 10 or abs(rectangles[i][1] - rectangles[i+1][1]) > 10:
                 final.append(rectangles[i+1])
+            else:
+                if final[-1][-1] < rectangles[i+1][-1]:
+                    final.pop()
+                    final.append(rectangles[i+1])
 
         return final
 
+#* Refactoring show_bounding_boxes
+def show_bounding_boxes(haystack:np.ndarray, rectangles:list):
+    # Calling get_bounding_boxes on the cropped image returns the dimensions inside the cropped image,
+    # we need to convert it to show the boxes on the full image.
+    if rectangles:
+        for rect in rectangles:
+            shifted_rect = rect[0]+60, rect[1]+175
+            w, h = rect[2], rect[3]
+            top_left = (shifted_rect[0],shifted_rect[1])
+            bottom_right = (shifted_rect[0]+w,shifted_rect[1]+h)
+            cv.rectangle(haystack, top_left, bottom_right, (0,255,0), 2, cv.LINE_4)
 
+        return haystack
+
+    return haystack
 
 # def non_max_supression(name:str, boxes:list):
 #     '''
@@ -80,23 +91,23 @@ def non_max_supression(rectangles:list):
 #     return final
 
 
-def show_bounding_boxes(haystack:np.ndarray, bounding_boxes:dict, needles:list, object_names:list):
-    supressed = {}
-    for i, key in enumerate(bounding_boxes):
-        if len(bounding_boxes[key]) > 0:
-            supressed_boxes = non_max_supression(key, bounding_boxes[key])
-            for box in supressed_boxes:
-                box_cord, box_conf = box[0], box[1]
-                pos = object_names.index(key)
+# def show_bounding_boxes(haystack:np.ndarray, bounding_boxes:dict, needles:list, object_names:list):
+#     supressed = {}
+#     for i, key in enumerate(bounding_boxes):
+#         if len(bounding_boxes[key]) > 0:
+#             supressed_boxes = non_max_supression(key, bounding_boxes[key])
+#             for box in supressed_boxes:
+#                 box_cord, box_conf = box[0], box[1]
+#                 pos = object_names.index(key)
                 
-                needle_h = needles[pos].shape[0]
-                needle_w = needles[pos].shape[1]
-                bottom_right = (box_cord[0]+needle_w, box_cord[1]+needle_h)
-                # print(object_names[pos], box_cord, bottom_right)
+#                 needle_h = needles[pos].shape[0]
+#                 needle_w = needles[pos].shape[1]
+#                 bottom_right = (box_cord[0]+needle_w, box_cord[1]+needle_h)
+#                 # print(object_names[pos], box_cord, bottom_right)
 
-                cv.rectangle(haystack, box_cord, bottom_right, color=(0,255,0), thickness=1, lineType=cv.LINE_4)
+#                 cv.rectangle(haystack, box_cord, bottom_right, color=(0,255,0), thickness=1, lineType=cv.LINE_4)
                 
-    return haystack
+#     return haystack
     # cv.imshow('Result', haystack)
     # cv.waitKey(1)
 

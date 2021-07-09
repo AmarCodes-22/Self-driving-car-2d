@@ -4,15 +4,6 @@ import re
 # from Xlib import display, X
 # from PIL import Image
 
-# W,H = 200,200
-# dsp = display.Display()
-# try:
-#     root = dsp.screen().root
-#     raw = root.get_image(0, 0, W,H, X.ZPixmap, 0xffffffff)
-#     image = Image.frombytes("RGB", (W, H), raw.data, "raw", "BGRX")
-#     image.show()
-# finally:
-#     dsp.close()
 
 def get_window_dimensions():
     #* Using xwininfo to find the location of the pocof1 screen and get the id using wmctrl -l
@@ -24,10 +15,10 @@ def get_window_dimensions():
             break
 
     win_info = os.popen('xwininfo -id {}'.format(window_id)).read().split('\n')
-    top_left_x = 0
-    top_left_y = 0
-    width = 0
-    height = 0
+    # top_left_x = 0
+    # top_left_y = 0
+    # width = 0
+    # height = 0
 
     # print(win_info)
     win_dim = []
