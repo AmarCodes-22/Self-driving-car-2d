@@ -6,10 +6,12 @@ def get_needles(paths:dict):
     '''
     Converts image(s) from local storage to a np array.
     '''
-    needle_arrs = [] # A list of all needle numpy arrays.
-    needle_names = [] # A list of the names inferred from the filenames from the needles folder.
+    needle_arrs = []
+    needle_names = []
     for i, key in enumerate(paths):
         arr = cv.imread(paths[key])
+        arr = cv.cvtColor(arr, cv.COLOR_BGR2GRAY)
+        arr = np.expand_dims(arr, 2)
         needle_arrs.append(arr)
         needle_names.append(paths[key].split('/')[-1])
 
@@ -22,43 +24,48 @@ def get_bounding_boxes(haystack:np.ndarray, needles:list, object_names:list):
     Returns the bounding boxes for the objects in 
     (top_left_x, top_left_y, bottom_right_x, bottom_right_y, confidence) format
     for all objects whether the object is present or not.
-    If the obejct is not present, the bbox is an empty list.
+    If the object is not present, the bbox is an empty list.
     '''
-    all_rectangles = []
+    all_rectangles, confs= [],[]
     threshold = 0.7
     for i in range(len(needles)):
+        if 'truck' in object_names[i]:
+            threshold = 0.6
         result = cv.matchTemplate(haystack, needles[i], cv.TM_CCOEFF_NORMED)
         top_lefts = np.where(result >= threshold)
         top_lefts = list(zip(*top_lefts[::-1]))
         if len(top_lefts) > 0:
             h, w = needles[i].shape[0], needles[i].shape[1]
             for top_left in top_lefts:
-                all_rectangles.append([top_left[0], top_left[1], w, h, result[top_left[1], top_left[0]]])
+                confidence = result[top_left[1], top_left[0]]
+                # name = object_names[i]
+                all_rectangles.append([top_left[0], top_left[1], w, h])
+                confs.append(confidence)
 
-    return all_rectangles
+    return all_rectangles, np.array(confs)
 
-#* Refactored non_max_supression
-def non_max_supression(rectangles:list):
+#* Refactoring non_max_supression
+def non_max_supression(rectangles:list, confidences:np.ndarray):
     final = []
-    if len(rectangles):
-        final.append(rectangles[0])
-        for i in range(len(rectangles) - 1):
-            if abs(rectangles[i][0] - rectangles[i+1][0]) > 10 or abs(rectangles[i][1] - rectangles[i+1][1]) > 10:
-                final.append(rectangles[i+1])
-            else:
-                if final[-1][-1] < rectangles[i+1][-1]:
-                    final.pop()
-                    final.append(rectangles[i+1])
+    sort_args = np.argsort(confidences)[::-1]
+    rectangles = np.array(rectangles)[sort_args]
+    while len(rectangles) > 0:
+        best = rectangles[0]
+        mask = np.ones(len(rectangles), dtype=bool)
+        final.append(list(best))
+        for i in range(len(rectangles)):
+            if abs(rectangles[i][0]-best[0]) < 10 and abs(rectangles[i][1]-best[1]) < 10:
+                mask[i] = False
 
-        return final
+        rectangles = rectangles[mask]
 
-#* Refactoring show_bounding_boxes
+    return final
+
+#* Refactored show_bounding_boxes
 def show_bounding_boxes(haystack:np.ndarray, rectangles:list):
-    # Calling get_bounding_boxes on the cropped image returns the dimensions inside the cropped image,
-    # we need to convert it to show the boxes on the full image.
-    if rectangles:
+    if len(rectangles) > 1:
         for rect in rectangles:
-            shifted_rect = rect[0]+60, rect[1]+175
+            shifted_rect = rect[0]+75, rect[1]+175
             w, h = rect[2], rect[3]
             top_left = (shifted_rect[0],shifted_rect[1])
             bottom_right = (shifted_rect[0]+w,shifted_rect[1]+h)
@@ -67,74 +74,3 @@ def show_bounding_boxes(haystack:np.ndarray, rectangles:list):
         return haystack
 
     return haystack
-
-# def non_max_supression(name:str, boxes:list):
-#     '''
-#     Takes in a bunch of bounding boxes and returns the ones that have the highest probability.
-#     Args:
-#         boxes list(tuples(tuple, float)):Boxes is a list of boxes. 
-#                                          Each box is a tuple of its top-left coordinates and confidence.
-#     '''
-#     final = []
-#     final.append(boxes[0])
-#     for i in range(len(boxes)):
-#         box_cord, box_conf = boxes[i][0], boxes[i][1]
-#         if abs(box_cord[0] - final[-1][0][0]) > 10: # if the objects are not similar add them to the list.
-#             final.append((box_cord, box_conf))
-#         else: # if they are similar use confidence to decide whether to add or not.
-#             if box_conf > final[-1][1]:
-#                 final.pop()
-#                 final.append((box_cord, box_conf))
-#             else:
-#                 continue
-
-#     return final
-
-
-# def show_bounding_boxes(haystack:np.ndarray, bounding_boxes:dict, needles:list, object_names:list):
-#     supressed = {}
-#     for i, key in enumerate(bounding_boxes):
-#         if len(bounding_boxes[key]) > 0:
-#             supressed_boxes = non_max_supression(key, bounding_boxes[key])
-#             for box in supressed_boxes:
-#                 box_cord, box_conf = box[0], box[1]
-#                 pos = object_names.index(key)
-                
-#                 needle_h = needles[pos].shape[0]
-#                 needle_w = needles[pos].shape[1]
-#                 bottom_right = (box_cord[0]+needle_w, box_cord[1]+needle_h)
-#                 # print(object_names[pos], box_cord, bottom_right)
-
-#                 cv.rectangle(haystack, box_cord, bottom_right, color=(0,255,0), thickness=1, lineType=cv.LINE_4)
-                
-#     return haystack
-    # cv.imshow('Result', haystack)
-    # cv.waitKey(1)
-
-
-# def get_bounding_boxes(haystack: np.ndarray, needles: list, object_names: list):
-#     '''
-#     Returns multiple bounding boxes for all object(s). 
-#     For eg when yellow-car1 exists in multiple positions on screen.
-#     '''
-#     bounding_boxes = {} # A dict of the object names and their bounding boxes.
-#     threshold = 0.7
-#     for i in range(len(needles)):
-#         if 'truck' in object_names[i]:
-#             threshold = 0.8
-#         all = []
-#         result = cv.matchTemplate(haystack, needles[i], cv.TM_CCOEFF_NORMED)
-#         (y_cords, x_cords) = np.where(result >= threshold)
-        
-#         if len(y_cords) > 0:
-#             for j in range(len(y_cords)):
-#                 confidence = result[y_cords[j], x_cords[j]]
-#                 all.append(((x_cords[j], y_cords[j]), confidence))
-
-#         bounding_boxes[object_names[i]] = all
-
-#     return bounding_boxes
-
-# Can't distinguish between color of the trucks and non max supression doesn't work
-# because it only works on boxes for a single object at a time.
-# Add more images for yellow car 1 or crop it to remove the effect of the white lines.

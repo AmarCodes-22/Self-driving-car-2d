@@ -1,9 +1,5 @@
 import os
 import re
-# from gi.repository import Gtk
-# from Xlib import display, X
-# from PIL import Image
-
 
 def get_window_dimensions():
     #* Using xwininfo to find the location of the pocof1 screen and get the id using wmctrl -l
@@ -15,12 +11,6 @@ def get_window_dimensions():
             break
 
     win_info = os.popen('xwininfo -id {}'.format(window_id)).read().split('\n')
-    # top_left_x = 0
-    # top_left_y = 0
-    # width = 0
-    # height = 0
-
-    # print(win_info)
     win_dim = []
     for i in win_info:
         i = i.replace(' ', '')
@@ -36,4 +26,3 @@ def get_window_dimensions():
 
 
     return tuple(win_dim)
-
