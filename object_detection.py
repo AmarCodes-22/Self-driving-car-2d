@@ -28,9 +28,26 @@ def get_bounding_boxes(haystack:np.ndarray, needles:list, object_names:list):
     '''
     all_rectangles, confs= [],[]
     threshold = 0.7
+    mine = False
     for i in range(len(needles)):
-        if 'truck' in object_names[i]:
-            threshold = 0.6
+        if 'mine' in object_names[i]:
+            threshold = 0.5
+        else:
+            threshold = 0.7
+
+        if 'yellow-car' in object_names[i]:
+            weight=1
+        elif 'blue-car' in object_names[i]:
+            weight=2
+        elif 'red-car' in object_names[i]:
+            weight=3
+        elif 'yellow-truck' in object_names[i]:
+            weight=4
+        elif 'red-truck' in object_names[i]:
+            weight=5
+        else:
+            weight=6
+
         result = cv.matchTemplate(haystack, needles[i], cv.TM_CCOEFF_NORMED)
         top_lefts = np.where(result >= threshold)
         top_lefts = list(zip(*top_lefts[::-1]))
@@ -38,8 +55,8 @@ def get_bounding_boxes(haystack:np.ndarray, needles:list, object_names:list):
             h, w = needles[i].shape[0], needles[i].shape[1]
             for top_left in top_lefts:
                 confidence = result[top_left[1], top_left[0]]
-                # name = object_names[i]
-                all_rectangles.append([top_left[0], top_left[1], w, h])
+                # name = object_names[i]        
+                all_rectangles.append([top_left[0], top_left[1], w, h, weight])
                 confs.append(confidence)
 
     return all_rectangles, np.array(confs)
@@ -54,7 +71,7 @@ def non_max_supression(rectangles:list, confidences:np.ndarray):
         mask = np.ones(len(rectangles), dtype=bool)
         final.append(list(best))
         for i in range(len(rectangles)):
-            if abs(rectangles[i][0]-best[0]) < 10 and abs(rectangles[i][1]-best[1]) < 10:
+            if (abs(rectangles[i][0]-best[0]) < 20) and (abs(rectangles[i][1]-best[1]) < 20):
                 mask[i] = False
 
         rectangles = rectangles[mask]
@@ -65,7 +82,7 @@ def non_max_supression(rectangles:list, confidences:np.ndarray):
 def show_bounding_boxes(haystack:np.ndarray, rectangles:list):
     if len(rectangles) > 1:
         for rect in rectangles:
-            shifted_rect = rect[0]+75, rect[1]+175
+            shifted_rect = rect[0]+60, rect[1]+175
             w, h = rect[2], rect[3]
             top_left = (shifted_rect[0],shifted_rect[1])
             bottom_right = (shifted_rect[0]+w,shifted_rect[1]+h)
