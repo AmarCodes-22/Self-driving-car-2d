@@ -28,25 +28,18 @@ def get_bounding_boxes(haystack:np.ndarray, needles:list, object_names:list):
     '''
     all_rectangles, confs= [],[]
     threshold = 0.7
-    mine = False
     for i in range(len(needles)):
         if 'mine' in object_names[i]:
             threshold = 0.5
         else:
             threshold = 0.7
 
-        if 'yellow-car' in object_names[i]:
-            weight=1
-        elif 'blue-car' in object_names[i]:
-            weight=2
-        elif 'red-car' in object_names[i]:
-            weight=3
-        elif 'yellow-truck' in object_names[i]:
-            weight=4
-        elif 'red-truck' in object_names[i]:
-            weight=5
+        if 'car' in object_names[i]:
+            weight = 1
+        elif 'truck' in object_names[i]:
+            weight = 2
         else:
-            weight=6
+            weight = 2
 
         result = cv.matchTemplate(haystack, needles[i], cv.TM_CCOEFF_NORMED)
         top_lefts = np.where(result >= threshold)
@@ -55,8 +48,7 @@ def get_bounding_boxes(haystack:np.ndarray, needles:list, object_names:list):
             h, w = needles[i].shape[0], needles[i].shape[1]
             for top_left in top_lefts:
                 confidence = result[top_left[1], top_left[0]]
-                # name = object_names[i]        
-                all_rectangles.append([top_left[0], top_left[1], w, h, weight])
+                all_rectangles.append([top_left[0]+w//2, top_left[1]+h//2, w, h, weight])
                 confs.append(confidence)
 
     return all_rectangles, np.array(confs)
@@ -84,8 +76,8 @@ def show_bounding_boxes(haystack:np.ndarray, rectangles:list):
         for rect in rectangles:
             shifted_rect = rect[0]+60, rect[1]+175
             w, h = rect[2], rect[3]
-            top_left = (shifted_rect[0],shifted_rect[1])
-            bottom_right = (shifted_rect[0]+w,shifted_rect[1]+h)
+            top_left = (shifted_rect[0]-(w//2),shifted_rect[1]-(h//2))
+            bottom_right = (top_left[0]+w,top_left[1]+h)
             cv.rectangle(haystack, top_left, bottom_right, (0,255,0), 2, cv.LINE_4)
 
         return haystack

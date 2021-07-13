@@ -1,76 +1,55 @@
-# Gets the bounding boxes from main.py and does everything regarding to navigation of the car.
-# Current concept:
-# 1. Send out rays from the car exactly in front, at 30 degrees to the front on both sides and at 60 degrees
-# to the front and 90 degrees to the front on both sides.
-# 2. Calculate the distance ie the length of these lines, if any line is obstructed by a bounding box, 
-# use it as the border else use x=70, x=230 as the border on left and right respectively.
-
-# New concept: simpler Just get the centre of all the bounding boxes that are present(mine, all others)
+# Concept: Just get the centre of all the bounding boxes that are present(mine, all others)
 # Find the distance between mine and the other boxes from 3 positions, current, 10 pixels to the left and right.
-# If the position to the right or left is less than the current go there, instead stay here.
+# If the distance of position to the right or left is more than the current go there, instead stay here.
 
 import numpy as np
 
-def find_mine(rectangles:list):
+#* Refactoring calc_distance to be faster
+def calc_distance(rectangles:list):
     '''
-    Finds the rectange that belongs to our car based on the width and hieght of the needle.
+    Calculates the distance of our car from other cars and borders.
     '''
-    found = False
-    idx = None
-    for i in range(len(rectangles)):
-        if rectangles[i][2] == 32 and rectangles[i][3] == 45:
-            found = True
-            idx = i
-            break
-    
-    return idx
-
-def get_centers(rectangles:list):
-    '''
-    Iterates all the rectangles and finds their centers.
-    '''
-    centers = []
-    for rect in rectangles:
-        center_x = rect[0]+(rect[2])//2
-        center_y = rect[1]+(rect[3])//2
-        centers.append((center_x, center_y, rect[-1]))
-
-    return centers
-
-# TODO: Add fucntionality to use weights of different objects
-def calc_distance(centers:list, index:int):
-    '''
-    Calculates the distance of out car from other cars and borders.
-    '''
+    rectangles = np.array(rectangles)
+    # if len(rectangles) == 1:
+    #     mine = rectangles[np.where((rectangles[:,2] == 32) * (rectangles[:,3] == 45))][:, 0:2]
+    #     if mine[:,0] < 150:
+    #         return (0,0,1)
+    #     else:
+    #         return (0,1,0)
+        # center_dist = np.sum((mine - [150, int(mine[:,1])])**2, axis=1)
+        # return (0,0,0)
     try:
-        mine_center = centers[index]
-        total_dist, total_dist_left, total_dist_right = 0,0,0
-        border_left_dist, border_right_dist = (abs(60-mine_center[0]) ** 2), (abs(250-mine_center[0]) ** 2)
-        for i in range(len(centers)):
-            print(centers[i][-1])
-            p1, p2 = np.array(centers[i]), np.array(mine_center)
-            left, right = p2+10, p2-10
+        mine = rectangles[np.where((rectangles[:,2] == 32) * (rectangles[:,3] == 45))][:, 0:2]
+        mine_right = mine + [10,0]
+        mine_left = mine - [10,0]
 
-            temp = p1 - p2
-            temp_left = p1-left
-            temp_right = p1-right
+        points = rectangles[:,0:2]
+        weights = rectangles[:,-1]
 
-            dist = np.dot(temp.T, temp) 
-            dist_left = np.dot(temp_left.T, temp_left)
-            dist_right = np.dot(temp_right.T, temp_right)
+        dists = np.dot(weights, np.sum((points - mine)** 2, axis=1))
+        dists_right = np.dot(weights, np.sum((points - mine_right)** 2, axis=1))
+        dists_left = np.dot(weights, np.sum((points - mine_left)** 2, axis=1))
 
-            total_dist += dist
-            total_dist_left += dist_left
-            total_dist_right += dist_right
+        center_dist = np.sum((mine - [150, int(mine[:,1])])**2, axis=1)
+        if mine[:,0] < 150:
+            dists_right += center_dist
+        else:
+            dists_left += center_dist
 
-        total_dist += (border_left_dist + border_right_dist)
-        total_dist_left += (border_left_dist + border_right_dist)
-        total_dist_right += (border_left_dist + border_right_dist)
+        if len(rectangles) == 1:
+            return (dists, dists_left, dists_right)
 
-        return (total_dist, total_dist_left, total_dist_right)
+        # print('distance without center_dist', (dists, dists_left, dists_right))
+
+        # dists = dists - int(center_dist)*5
+        # dists_left = dists_left - int(center_dist)*5
+        # dists_right = dists_right - int(center_dist)*5
+
+        # print('distance with center_dist', (dists, dists_left, dists_right))
+
+        return (dists, dists_left, dists_right)
     except:
         pass
-
 
 def navigate(distances:tuple):
     '''
